@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    # Pattern matched against refs/tags
+    tags:        
+      - 'v*'
+
+env:
+  SDK_VERSION: v24.09.07
+
+jobs:
+    release:
+      runs-on: windows-2022
+      steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4.1.1
+
+      - name: Check for existing cache
+        id: cache_status
+        uses: actions/cache@v4
+        with:
+            path: ${{ github.workspace }}\vcpkg_installed
+            key: ${{ runner.os }}-vcpkg-${{ hashFiles('**/vcpkg.json') }}
+
+      - name: Install vcpkg
+        if: steps.cache_status.outputs.cache-hit != 'true'
+        shell: cmd
+        run: |
+            git clone https://github.com/microsoft/vcpkg.git
+            cd vcpkg
+            git checkout 2024.09.30
+            .\bootstrap-vcpkg.bat  && cd ../
+
+      - name: Install dependencies
+        if: steps.cache_status.outputs.cache-hit != 'true'
+        shell: cmd
+        run: |
+            ${{ github.workspace }}\vcpkg\vcpkg.exe install --x-install-root ${{ github.workspace }}\vcpkg_installed
+
+      - name: Cache dependencies
+        if: steps.cache_status.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+            path: ${{ github.workspace }}\vcpkg_installed
+            key: ${{ runner.os }}-vcpkg-${{ hashFiles('**/vcpkg.json') }} 
+
+      - name: Create zip archive for gstreamer
+        run: |
+            Copy-Item -Recurse ${{ github.workspace }}\vcpkg_installed\x64-windows\bin ${{ github.workspace }}\sensing-dev-gstreamer\bin
+            Copy-Item -Recurse ${{ github.workspace }}\vcpkg_installed\x64-windows\lib ${{ github.workspace }}\sensing-dev-gstreamer\lib
+            Copy-Item -Recurse ${{ github.workspace }}\vcpkg_installed\x64-windows\include ${{ github.workspace }}\sensing-dev-gstreamer\include
+            Compress-Archive -Path ${{ github.workspace }}\sensing-dev-gstreamer -DestinationPath ${{ github.workspace }}\gstreamer-${{ github.ref_name }}-win64.zip
+
+      - name: Create zip archive for gst-plugins
+        run: |
+            Copy-Item -Recurse ${{ github.workspace }}\vcpkg_installed\x64-windows\plugins\gstreamer ${{ github.workspace }}\sensing-dev-gst-plugins\lib\gstreamer-1.0
+            Compress-Archive -Path ${{ github.workspace }}\sensing-dev-gst-plugins -DestinationPath ${{ github.workspace }}\gst-plugins-${{ github.ref_name }}-win64.zip
+    
+      - name: Create zip archive for tools
+        run: |
+            Copy-Item -Recurse ${{ github.workspace }}\vcpkg_installed\x64-windows\tools\gstreamer ${{ github.workspace }}\sensing-dev-gst-tools\bin
+            Compress-Archive -Path ${{ github.workspace }}\sensing-dev-gst-tools -DestinationPath ${{ github.workspace }}\gst-tools-${{ github.ref_name }}-win64.zip
+
+      - name: Release-Windows
+        uses: softprops/action-gh-release@v2
+        with:
+            files: |
+                gstreamer-${{ github.ref_name }}-win64.zip
+                gst-plugins-${{ github.ref_name }}-win64.zip
+                gst-tools-${{ github.ref_name }}-win64.zip
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
