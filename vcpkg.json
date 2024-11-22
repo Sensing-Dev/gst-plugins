@@ -3,11 +3,16 @@
     "version-semver": "1.22.5",
     "builtin-baseline":"2c401863dd54a640aeb26ed736c55489c079323b",
     "dependencies": [
+        { "name": "glib", "version>=": "2.78.1"},
         { 
             "name": "gstreamer", 
             "version>=": "1.22.5#8",
             "default-features" : false,
             "features": ["plugins-base", "plugins-good"]
         }
-    ]
+    ],
+    "overrides": [
+		{ "name": "glib", "version": "2.78.1"},
+		{ "name": "gstreamer", "version": "1.22.5#8"}
+	]
 }
