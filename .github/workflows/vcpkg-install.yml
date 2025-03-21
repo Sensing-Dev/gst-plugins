@@ -154,7 +154,7 @@ jobs:
     - name: Install OpenCV
       run: |
         pip3 install numpy
-        pip3 install --no-binary opencv-python opencv-python==4.10.0.84 --verbose
+        pip3 install --no-binary opencv-python opencv-python --verbose
 
     - name: Checkout Repository
       uses: actions/checkout@v4.1.1
